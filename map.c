@@ -122,6 +122,39 @@ static mm_match_t *collect_matches(void *km, int *_n_m, int max_occ, const mm_id
 	return m;
 }
 
+// MRV addition, if zmw and movies are the same returns 1, else 0
+static inline int share_zmw(const char *qname_const, const char *tname_const)
+{
+	//fprintf(stderr, "\e[01;32mTop of check zmw %s %s \e[0m\n", qname_const, tname_const);
+	// make string copies 
+	char* qname = calloc(strlen(qname_const)+1, sizeof(char)); strcpy(qname, qname_const);
+	char* tname = calloc(strlen(tname_const)+1, sizeof(char)); strcpy(tname, tname_const);
+
+	// Extract the query movie / zmq
+   	char * q_movie = strtok_r(qname, "/", &qname);
+   	char * q_zmw   = strtok_r(qname, "/", &qname);
+	if(q_movie == NULL || q_zmw == NULL ){
+		fprintf(stderr, "\e[01;31mQuery seq not in PacBio format, skipping: %s\n\e[0m", qname_const);
+		return(0);
+	}
+
+   	// Extract the target movie / zmq
+   	char * t_movie = strtok_r(tname, "/", &tname);
+   	char * t_zmw   = strtok_r(tname, "/", &tname);
+	if(t_movie == NULL || t_zmw == NULL ){
+		fprintf(stderr, "\e[01;31mTarget seq not in PacBio format, skipping: %s\n\e[0m", tname_const);
+		return(0);
+	}
+	
+	//fprintf(stderr, "\e[01;31m %s %s: %s %s\n\e[0m", t_movie, t_zmw, q_movie, q_zmw);
+	if( strcmp(t_movie, q_movie) == 0 && strcmp(t_zmw, q_zmw) == 0 ){
+		return(1);
+	}
+	//fprintf(stderr, "\e[01;31mZMWs do not match, skipping: %s, %s\n\e[0m", tname_const, qname_const);
+	return(0);
+}
+// MRV end
+
 static inline int skip_seed(int flag, uint64_t r, const mm_match_t *q, const char *qname, int qlen, const mm_idx_t *mi, int *is_self)
 {
 	*is_self = 0;
@@ -143,6 +176,13 @@ static inline int skip_seed(int flag, uint64_t r, const mm_match_t *q, const cha
 			if (flag & MM_F_FOR_ONLY) return 1;
 		}
 	}
+	// MRV addition 
+	if (qname && (flag & MM_F_ZMW_HIT_ONLY)){
+		const mm_idx_seq_t *s = &mi->seq[r>>32];
+		if(!share_zmw(qname, s->name))
+			return(1);
+	}
+	// MRV end
 	return 0;
 }
 
