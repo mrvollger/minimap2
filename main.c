@@ -70,6 +70,7 @@ static ko_longopt_t long_options[] = {
 	{ "chain-gap-scale",ko_required_argument, 343 },
 	{ "alt",            ko_required_argument, 344 },
 	{ "alt-drop",       ko_required_argument, 345 },
+	{ "zmw-hit-only",   ko_no_argument,       346 }, // MRV addition
 	{ "help",           ko_no_argument,       'h' },
 	{ "max-intron-len", ko_required_argument, 'G' },
 	{ "version",        ko_no_argument,       'V' },
@@ -217,6 +218,7 @@ int main(int argc, char *argv[])
 		else if (c == 343) opt.chain_gap_scale = atof(o.arg); // --chain-gap-scale
 		else if (c == 344) alt_list = o.arg; // --alt
 		else if (c == 345) opt.alt_drop = atof(o.arg); // --alt-drop
+		else if (c == 346) opt.flag |= MM_F_ZMW_HIT_ONLY; // --zmw-hit-only. Skip alignments that are not between the same ZMW. MRV addition
 		else if (c == 314) { // --frag
 			yes_or_no(&opt, MM_F_FRAG_MODE, o.longidx, o.arg, 1);
 		} else if (c == 315) { // --secondary
@@ -338,7 +340,7 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "\nSee `man ./minimap2.1' for detailed description of these and other advanced command-line options.\n");
 		return fp_help == stdout? 0 : 1;
 	}
-
+	
 	if ((opt.flag & MM_F_SR) && argc - o.ind > 3) {
 		fprintf(stderr, "[ERROR] incorrect input: in the sr mode, please specify no more than two query files.\n");
 		return 1;
