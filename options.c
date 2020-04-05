@@ -23,6 +23,8 @@ void mm_mapopt_init(mm_mapopt_t *opt)
 	opt->max_gap = 5000;
 	opt->max_gap_ref = -1;
 	opt->max_chain_skip = 25;
+	opt->max_chain_iter = 5000;
+	opt->chain_gap_scale = 1.0f;
 
 	opt->mask_level = 0.5f;
 	opt->pri_ratio = 0.8f;
@@ -32,6 +34,8 @@ void mm_mapopt_init(mm_mapopt_t *opt)
 	opt->max_join_short = 2000;
 	opt->min_join_flank_sc = 1000;
 	opt->min_join_flank_ratio = 0.5f;
+
+	opt->alt_drop = 0.15f;
 
 	opt->a = 2, opt->b = 4, opt->q = 4, opt->e = 2, opt->q2 = 24, opt->e2 = 1;
 	opt->sc_ambi = 1;
@@ -119,13 +123,16 @@ int mm_set_opt(const char *preset, mm_idxopt_t *io, mm_mapopt_t *mo)
 		mo->mid_occ = 1000;
 		mo->max_occ = 5000;
 		mo->mini_batch_size = 50000000;
-	} else if (strcmp(preset, "splice") == 0 || strcmp(preset, "cdna") == 0) {
+	} else if (strncmp(preset, "splice", 6) == 0 || strcmp(preset, "cdna") == 0) {
 		io->flag = 0, io->k = 15, io->w = 5;
 		mo->flag |= MM_F_SPLICE | MM_F_SPLICE_FOR | MM_F_SPLICE_REV | MM_F_SPLICE_FLANK;
 		mo->max_gap = 2000, mo->max_gap_ref = mo->bw = 200000;
 		mo->a = 1, mo->b = 2, mo->q = 2, mo->e = 1, mo->q2 = 32, mo->e2 = 0;
 		mo->noncan = 9;
+		mo->junc_bonus = 9;
 		mo->zdrop = 200, mo->zdrop_inv = 100; // because mo->a is halved
+		if (strcmp(preset, "splice:hq") == 0)
+			mo->junc_bonus = 5, mo->b = 4, mo->q = 6, mo->q2 = 24;
 	} else return -1;
 	return 0;
 }
@@ -159,6 +166,11 @@ int mm_check_opt(const mm_idxopt_t *io, const mm_mapopt_t *mo)
 			fprintf(stderr, "[ERROR]\033[1;31m --for-only and --rev-only can't be applied at the same time\033[0m\n");
 		return -3;
 	}
+	if (mo->e <= 0 || mo->q <= 0) {
+		if (mm_verbose >= 1)
+			fprintf(stderr, "[ERROR]\033[1;31m -O and -E must be positive\033[0m\n");
+		return -1;
+	}
 	if ((mo->q != mo->q2 || mo->e != mo->e2) && !(mo->e > mo->e2 && mo->q + mo->e < mo->q2 + mo->e2)) {
 		if (mm_verbose >= 1)
 			fprintf(stderr, "[ERROR]\033[1;31m dual gap penalties violating E1>E2 and O1+E1<O2+E2\033[0m\n");
@@ -172,6 +184,11 @@ int mm_check_opt(const mm_idxopt_t *io, const mm_mapopt_t *mo)
 	if (mo->zdrop < mo->zdrop_inv) {
 		if (mm_verbose >= 1)
 			fprintf(stderr, "[ERROR]\033[1;31m Z-drop should not be less than inversion-Z-drop\033[0m\n");
+		return -5;
+	}
+	if ((mo->flag & MM_F_NO_PRINT_2ND) && (mo->flag & MM_F_ALL_CHAINS)) {
+		if (mm_verbose >= 1)
+			fprintf(stderr, "[ERROR]\033[1;31m -X/-P and --secondary=no can't be applied at the same time\033[0m\n");
 		return -5;
 	}
 	return 0;
