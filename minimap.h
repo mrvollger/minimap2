@@ -36,9 +36,7 @@
 #define MM_F_NO_END_FLT    0x10000000
 #define MM_F_HARD_MLEVEL   0x20000000
 #define MM_F_SAM_HIT_ONLY  0x40000000
-
-// MRV addition 
-#define MM_F_ZMW_HIT_ONLY  0x80000000 // only consider alignments between alignments between same zmws  
+#define MM_F_ZMW_HIT_ONLY  0x80000000 // only consider alignments between alignments between same zmws.  MRV addition
 
 #define MM_I_HPC          0x1
 #define MM_I_NO_SEQ       0x2
