@@ -1,3 +1,45 @@
+# MRV modified minimap2 for ZMW matched alignments #
+
+This modification of minimap2 allows you to make alignments between HiFi reads and subreads from only the same ZMW. The input is a reference of different HiFi reads, and the set of subreads that were used to construct the HiFi reads. Only alignments between reads from the same ZMW will be made. 
+
+## Install and example ##
+First install my modified minimap2.
+```
+git clone https://github.com/mrvollger/minimap2.git
+cd minimap2 && make
+```
+
+Then you can use this plus some pacbio tools [pbbamify (part of pbcore)] to make an alignment bam that only has alignments between reads with the same zmw and movie (i.e. my `—zmw-hit-only` option).
+
+```
+samtools faidx {inpput.ref}
+samtools pbindex {input.subreads}
+samtools fastq {input.subreads} > {input.fastq}
+
+minimap2 \
+   --zmw-hit-only --eqx -Y -ax map-pb -t {threads} \
+   {input.ref} {input.fastq} | \
+   samtools view -b -F 4 | \
+   samtools sort -m 4G -@ {threads} - | pbbamify {input.ref} {input.subreads}  >  {output.bam}
+```
+
+### File descriptions: ###
+
+`{input.ref}`: a fasta file with all your ccs reads. (This must be indexed with samtools faidx, and I usually batch this so this file is at max 3GB). If larger than ~3Gb increase the `-I` parameter for minimap2. 
+
+`{input.fastq}`: a fastq file with all the subreads (can be from many zmws)
+
+`{input.subreads}`: The raw and unaligned subreads file, it also must have a pacbio index (.pbi make with pbindex)
+
+`{output.bam}`: A bam that only contains alignments between HiFi reads and their respective subreads.
+
+
+
+
+
+
+
+# Start of minimap2 readme #
 [![GitHub Downloads](https://img.shields.io/github/downloads/lh3/minimap2/total.svg?style=social&logo=github&label=Download)](https://github.com/lh3/minimap2/releases)
 [![BioConda Install](https://img.shields.io/conda/dn/bioconda/minimap2.svg?style=flag&label=BioConda%20install)](https://anaconda.org/bioconda/minimap2)
 [![PyPI](https://img.shields.io/pypi/v/mappy.svg?style=flat)](https://pypi.python.org/pypi/mappy)
